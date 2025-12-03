@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Registration & Add Product - AYU Platform</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ayuGreen: '#22c55e',
+                        ayuDark: '#064e3b',
+                        ayuLight: '#dcfce7'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .map-placeholder {
+            background: linear-gradient(45deg, #f3f4f6 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f3f4f6 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f3f4f6 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f3f4f6 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const ProviderPlatform = () => {
+            const [currentView, setCurrentView] = useState('registration');
+            const [registrationStep, setRegistrationStep] = useState(1);
+            const [providerData, setProviderData] = useState({
+                name: '',
+                organization: '',
+                email: '',
+                phone: '',
+                walletAddress: '',
+                country: 'India',
+                cooperativeId: '',
+                address: '',
+                contactPerson: '',
+                documents: [],
+                geoData: null,
+                status: 'PENDING'
+            });
+
+            const [productData, setProductData] = useState({
+                productName: '',
+                species: 'Ashwagandha',
+                batchId: '',
+                harvestDate: '',
+                harvestZone: '',
+                moistureThreshold: '',
+                expectedQuantity: '',
+                priceTerms: '',
+                labTests: [],
+                photos: []
+            });
+
+            const [isVerified, setIsVerified] = useState(false);
+
+            useEffect(() => {
+                if (currentView === 'addProduct') {
+                    setProductData(prev => ({
+                        ...prev,
+                        batchId: `${productData.species.toLowerCase().substring(0,4)}-${new Date().toISOString().split('T')[0].replace(/-/g,'')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
+                    }));
+                }
+            }, [currentView, productData.species]);
+
+            const handleFileUpload = (files, type, isProduct = false) => {
+                const fileArray = Array.from(files).map(file => ({
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    uploadedAt: new Date().toISOString()
+                }));
+
+                if (isProduct) {
+                    if (type === 'labTests') {
+                        setProductData(prev => ({
+                            ...prev,
+                            labTests: [...prev.labTests, ...fileArray]
+                        }));
+                    } else if (type === 'photos') {
+                        setProductData(prev => ({
+                            ...prev,
+                            photos: [...prev.photos, ...fileArray]
+                        }));
+                    }
+                } else {
+                    setProviderData(prev => ({
+                        ...prev,
+                        documents: [...prev.documents, ...fileArray.map(f => ({...f, docType: type}))]
+                    }));
+                }
+            };
+
+            const StatusBadge = ({ status }) => {
+                const colors = {
+                    PENDING: 'bg-yellow-100 text-yellow-800',
+                    VERIFIED: 'bg-green-100 text-green-800',
+                    REJECTED: 'bg-red-100 text-red-800'
+                };
+                return (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${colors[status]}`}>
+                        {status}
+                    </span>
+                );
+            };
+
+            const RegistrationWizard = () => (
+                <div className="max-w-4xl mx-auto p-6">
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold text-ayuDark mb-2">Provider Registration</h1>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-gray-600">Status:</span>
+                            <StatusBadge status={providerData.status} />
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mb-8">
+                        <div className="flex items-center">
+                            {[1, 2, 3, 4].map((step) => (
+                                <div key={step} className="flex items-center">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                        step <= registrationStep ? 'bg-ayuGreen text-white' : 'bg-gray-300 text-gray-600'
+                                    }`}>
+                                        {step}
+                                    </div>
+                                    {step < 4 && (
+                                        <div className={`w-16 h-1 ${
+                                            step < registrationStep ? 'bg-ayuGreen' : 'bg-gray-300'
+                                        }`} />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-between mt-2 text-sm text-gray-600">
+                            <span>Basic Details</span>
+                            <span>Documents</span>
+                            <span>Geo Data</span>
+                            <span>Submit</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        {registrationStep === 1 && (
+                            <div>
+                                <h2 className="text-xl font-semibold mb-4">Step 1: Basic Details</h2>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Provider Name"
+                                        className="border rounded-lg px-3 py-2"
+                                        value={providerData.name}
+                                        onChange={(e) => setProviderData(prev => ({...prev, name: e.target.value}))}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Organization/Cooperative"
+                                        className="border rounded-lg px-3 py-2"
+                                        value={providerData.organization}
+                                        onChange={(e) => setProviderData(prev => ({...prev, organization: e.target.value}))}
+                                    />
+                                    <input
+                                        type="email"
+                                        placeholder="Email"
+                                        className="border rounded-lg px-3 py-2"
+                                        value={providerData.email}
+                                        onChange={(e) => setProviderData(prev => ({...prev, email: e.target.value}))}
+                                    />
+                                    <input
+                                        type="tel"
+                                        placeholder="Phone Number"
+                                        className="border rounded-lg px-3 py-2"
+                                        value={providerData.phone}
+                                        onChange={(e) => setProviderData(prev => ({...prev, phone: e.target.value}))}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Wallet Address/Public Key"
+                                        className="border rounded-lg px-3 py-2 col-span-2"
+                                        value={providerData.walletAddress}
+                                        onChange={(e) => setProviderData(prev => ({...prev, walletAddress: e.target.value}))}
+                                    />
+                                    <textarea
+                                        placeholder="Full Address"
+                                        className="border rounded-lg px-3 py-2 col-span-2"
+                                        rows="3"
+                                        value={providerData.address}
+                                        onChange={(e) => setProviderData(prev => ({...prev, address: e.target.value}))}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {registrationStep === 2 && (
+                            <div>
+                                <h2 className="text-xl font-semibold mb-4">Step 2: Upload Legal Documents</h2>
+                                <div className="space-y-4">
+                                    {['AYUSH License', 'GST Certificate', 'Bank Details'].map((docType) => (
+                                        <div key={docType} className="border border-dashed border-gray-300 rounded-lg p-4">
+                                            <h3 className="font-medium mb-2">{docType}</h3>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.jpg,.png"
+                                                className="mb-2"
+                                                onChange={(e) => handleFileUpload(e.target.files, docType)}
+                                            />
+                                            <p className="text-xs text-gray-500">Upload PDF, JPG, or PNG (max 10MB)</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-4">
+                                    <h3 className="font-medium mb-2">Uploaded Documents:</h3>
+                                    {providerData.documents.map((doc, index) => (
+                                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded mb-1">
+                                            <span className="text-sm">{doc.docType}: {doc.name}</span>
+                                            <span className="text-xs text-gray-500">{(doc.size / 1024 / 1024).toFixed(2)} MB</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {registrationStep === 3 && (
+                            <div>
+                                <h2 className="text-xl font-semibold mb-4">Step 3: Geo Provenance</h2>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div>
+                                        <h3 className="font-medium mb-3">Choose Location Method:</h3>
+                                        <div className="space-y-3">
+                                            <button className="w-full p-3 border rounded-lg text-left hover:bg-gray-50">
+                                                📍 Pin Location on Map
+                                            </button>
+                                            <button className="w-full p-3 border rounded-lg text-left hover:bg-gray-50">
+                                                📄 Upload Geo-data File (CSV/KML)
+                                            </button>
+                                            <button className="w-full p-3 border rounded-lg text-left hover:bg-gray-50">
+                                                📱 Live GPS Capture (Mobile)
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-medium mb-3">Farm Location Preview:</h3>
+                                        <div className="map-placeholder h-48 rounded-lg border flex items-center justify-center">
+                                            <div className="text-center text-gray-500">
+                                                <div className="text-2xl mb-2">🗺️</div>
+                                                <p>Interactive Map</p>
+                                                <p className="text-sm">Select location method to activate</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {registrationStep === 4 && (
+                            <div>
+                                <h2 className="text-xl font-semibold mb-4">Step 4: Review & Submit</h2>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="font-medium mb-2">Registration Summary:</h3>
+                                    <div className="text-sm space-y-1">
+                                        <p><strong>Provider:</strong> {providerData.name}</p>
+                                        <p><strong>Organization:</strong> {providerData.organization}</p>
+                                        <p><strong>Email:</strong> {providerData.email}</p>
+                                        <p><strong>Documents Uploaded:</strong> {providerData.documents.length}</p>
+                                        <p><strong>Geo Data:</strong> {providerData.geoData ? 'Provided' : 'Pending'}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <p className="text-sm text-yellow-800">
+                                        ⚠️ After submission, your registration will be reviewed by our verification team. 
+                                        You'll be notified via email once verified.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between mt-6">
+                            <button
+                                onClick={() => setRegistrationStep(Math.max(1, registrationStep - 1))}
+                                disabled={registrationStep === 1}
+                                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+                            {registrationStep < 4 ? (
+                                <button
+                                    onClick={() => setRegistrationStep(registrationStep + 1)}
+                                    className="px-4 py-2 bg-ayuGreen text-white rounded-lg hover:bg-green-600"
+                                >
+                                    Next
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        setProviderData(prev => ({...prev, status: 'PENDING'}));
+                                        setIsVerified(true); // Mock verification for demo
+                                        setCurrentView('dashboard');
+                                    }}
+                                    className="px-4 py-2 bg-ayuGreen text-white rounded-lg hover:bg-green-600"
+                                >
+                                    Submit Registration
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const AddProductForm = () => (
+                <div className="max-w-4xl mx-auto p-6">
+                    <div className="mb-6">
+                        <h1 className="text-3xl font-bold text-ayuDark mb-2">Add New Product Batch</h1>
+                        <p className="text-gray-600">Create a blockchain-backed product batch with provenance data</p>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h2 className="text-xl font-semibold mb-4">Product Details</h2>
+                                <div className="space-y-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Product Name"
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        value={productData.productName}
+                                        onChange={(e) => setProductData(prev => ({...prev, productName: e.target.value}))}
+                                    />
+                                    <select
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        value={productData.species}
+                                        onChange={(e) => setProductData(prev => ({...prev, species: e.target.value}))}
+                                    >
+                                        <option value="Ashwagandha">Ashwagandha</option>
+                                        <option value="Turmeric">Turmeric</option>
+                                        <option value="Tulsi">Tulsi</option>
+                                        <option value="Brahmi">Brahmi</option>
+                                        <option value="Neem">Neem</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        placeholder="Batch ID (auto-generated)"
+                                        className="w-full border rounded-lg px-3 py-2 bg-gray-50"
+                                        value={productData.batchId}
+                                        readOnly
+                                    />
+                                    <input
+                                        type="date"
+                                        placeholder="Harvest Date"
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        value={productData.harvestDate}
+                                        onChange={(e) => setProductData(prev => ({...prev, harvestDate: e.target.value}))}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <h2 className="text-xl font-semibold mb-4">Harvest Details</h2>
+                                <div className="space-y-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Harvest Zone/Location"
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        value={productData.harvestZone}
+                                        onChange={(e) => setProductData(prev => ({...prev, harvestZone: e.target.value}))}
+                                    />
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="Moisture Threshold (%)"
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        value={productData.moistureThreshold}
+                                        onChange={(e) => setProductData(prev => ({...prev, moistureThreshold: e.target.value}))}
+                                    />
+                                    <input
+                                        type="number"
+                                        placeholder="Expected Quantity (kg)"
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        value={productData.expectedQuantity}
+                                        onChange={(e) => setProductData(prev => ({...prev, expectedQuantity: e.target.value}))}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Price Terms (₹/kg)"
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        value={productData.priceTerms}
+                                        onChange={(e) => setProductData(prev => ({...prev, priceTerms: e.target.value}))}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8">
+                            <h2 className="text-xl font-semibold mb-4">Documentation & Testing</h2>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 className="font-medium mb-3">Lab Test Reports</h3>
+                                    <div className="border border-dashed border-gray-300 rounded-lg p-4 mb-3">
+                                        <input
+                                            type="file"
+                                            accept=".pdf"
+                                            multiple
+                                            onChange={(e) => handleFileUpload(e.target.files, 'labTests', true)}
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Upload moisture, purity, DNA barcode reports (PDF)</p>
+                                    </div>
+                                    {productData.labTests.map((test, index) => (
+                                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded mb-1">
+                                            <span className="text-sm">{test.name}</span>
+                                            <span className="text-xs text-gray-500">{(test.size / 1024 / 1024).toFixed(2)} MB</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div>
+                                    <h3 className="font-medium mb-3">Product Photos</h3>
+                                    <div className="border border-dashed border-gray-300 rounded-lg p-4 mb-3">
+                                        <input
+                                            type="file"
+                                            accept=".jpg,.jpeg,.png"
+                                            multiple
+                                            onChange={(e) => handleFileUpload(e.target.files, 'photos', true)}
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Upload harvest, processing, packaging photos</p>
+                                    </div>
+                                    {productData.photos.map((photo, index) => (
+                                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded mb-1">
+                                            <span className="text-sm">{photo.name}</span>
+                                            <span className="text-xs text-gray-500">{(photo.size / 1024 / 1024).toFixed(2)} MB</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h3 className="font-medium mb-2">🔗 Blockchain Integration</h3>
+                            <p className="text-sm text-blue-800">
+                                Upon submission, your product metadata and file hashes will be stored on the blockchain. 
+                                A unique QR code will be generated for batch tracking and consumer verification.
+                            </p>
+                        </div>
+
+                        <div className="flex justify-between mt-6">
+                            <button
+                                onClick={() => setCurrentView('dashboard')}
+                                className="px-4 py-2 border border-gray-300 rounded-lg"
+                            >
+                                Save as Draft
+                            </button>
+                            <button
+                                onClick={() => {
+                                    alert('Product batch created! Blockchain TX: 0xabc123... QR code generated.');
+                                    setCurrentView('dashboard');
+                                }}
+                                className="px-4 py-2 bg-ayuGreen text-white rounded-lg hover:bg-green-600"
+                            >
+                                Submit to Blockchain
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const Dashboard = () => (
+                <div className="max-w-6xl mx-auto p-6">
+                    <div className="mb-6 flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-ayuDark">Provider Dashboard</h1>
+                            <p className="text-gray-600">Welcome back, {providerData.name}</p>
+                        </div>
+                        <StatusBadge status={isVerified ? 'VERIFIED' : 'PENDING'} />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                        <div className="bg-white p-4 rounded-lg shadow">
+                            <div className="text-2xl font-bold text-ayuGreen">12</div>
+                            <div className="text-gray-600">Total Batches</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg shadow">
+                            <div className="text-2xl font-bold text-blue-600">8</div>
+                            <div className="text-gray-600">Active Listings</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg shadow">
+                            <div className="text-2xl font-bold text-yellow-600">₹1,24,500</div>
+                            <div className="text-gray-600">Total Revenue</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg shadow">
+                            <div className="text-2xl font-bold text-purple-600">156</div>
+                            <div className="text-gray-600">QR Scans</div>
+                        </div>
+                    </div>
+
+                    {!isVerified && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                            <p className="text-yellow-800">
+                                ⏳ Your account is pending verification. You can prepare product drafts but cannot publish until verified.
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-semibold">My Batches</h2>
+                            <button
+                                onClick={() => setCurrentView('addProduct')}
+                                disabled={!isVerified}
+                                className="px-4 py-2 bg-ayuGreen text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
+                            >
+                                + Add Product
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {/* Sample batch entries */}
+                            {[
+                                { id: 'ashw-20250910-001', name: 'Premium Ashwagandha', status: 'VERIFIED', scans: 23, revenue: '₹15,600' },
+                                { id: 'tur-20250908-002', name: 'Organic Turmeric', status: 'PENDING', scans: 12, revenue: '₹8,900' },
+                                { id: 'tulsi-20250905-003', name: 'Fresh Tulsi Leaves', status: 'VERIFIED', scans: 45, revenue: '₹12,300' }
+                            ].map((batch) => (
+                                <div key={batch.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                    <div className="flex-1">
+                                        <div className="flex items-center space-x-3">
+                                            <h3 className="font-medium">{batch.name}</h3>
+                                            <StatusBadge status={batch.status} />
+                                        </div>
+                                        <p className="text-sm text-gray-600">Batch ID: {batch.id}</p>
+                                    </div>
+                                    <div className="flex items-center space-x-6 text-sm">
+                                        <div className="text-center">
+                                            <div className="font-medium">{batch.scans}</div>
+                                            <div className="text-gray-500">Scans</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="font-medium">{batch.revenue}</div>
+                                            <div className="text-gray-500">Revenue</div>
+                                        </div>
+                                        <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                            📱 QR Code
+                                        </button>
+                                        <button className="px-3 py-1 bg-gray-100 text-gray-800 rounded text-xs">
+                                            🔗 Blockchain
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const Navigation = () => (
+                <nav className="bg-ayuDark text-white p-4">
+                    <div className="max-w-6xl mx-auto flex items-center justify-between">
+                        <div className="flex items-center space-x-6">
+                            <h1 className="text-xl font-bold">🌿 AYU Platform</h1>
+                            {currentView !== 'registration' && (
+                                <div className="hidden md:flex space-x-4">
+                                    <button
+                                        onClick={() => setCurrentView('dashboard')}
+                                        className={`px-3 py-2 rounded ${currentView === 'dashboard' ? 'bg-ayuGreen' : 'hover:bg-gray-700'}`}
+                                    >
+                                        Dashboard
+                                    </button>
+                                    <button
+                                        onClick={() => setCurrentView('addProduct')}
+                                        className={`px-3 py-2 rounded ${currentView === 'addProduct' ? 'bg-ayuGreen' : 'hover:bg-gray-700'}`}
+                                    >
+                                        Add Product
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-sm">Provider Portal</span>
+                            {providerData.status && <StatusBadge status={providerData.status} />}
+                        </div>
+                    </div>
+                </nav>
+            );
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <Navigation />
+                    
+                    {currentView === 'registration' && <RegistrationWizard />}
+                    {currentView === 'dashboard' && <Dashboard />}
+                    {currentView === 'addProduct' && <AddProductForm />}
+
+                    {/* Demo Controls */}
+                    <div className="fixed bottom-4 right-4 bg-white p-3 rounded-lg shadow-lg border">
+                        <div className="text-xs text-gray-600 mb-2">Demo Controls:</div>
+                        <div className="space-y-1">
+                            <button
+                                onClick={() => {setCurrentView('registration'); setRegistrationStep(1);}}
+                                className="block w-full text-left text-xs px-2 py-1 hover:bg-gray-100 rounded"
+                            >
+                                🔄 Reset Registration
+                            </button>
+                            <button
+                                onClick={() => setIsVerified(!isVerified)}
+                                className="block w-full text-left text-xs px-2 py-1 hover:bg-gray-100 rounded"
+                            >
+                                ⚡ Toggle Verification
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<ProviderPlatform />, document.getElementById('root'));
+    </script>
+</body>
+</html>
